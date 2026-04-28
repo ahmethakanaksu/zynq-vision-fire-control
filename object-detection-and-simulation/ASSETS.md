@@ -20,7 +20,6 @@ Once those folders are in place, open `LargeTerrain/` in Unity
 
 ## Download link
 
-> **TODO:** paste the public Google Drive (or equivalent) link here
-> once the asset pack is uploaded.
+> [Google Drive Link](https://drive.google.com/file/d/1p11y3CZZVcsv4T7AaFPe08FLR1YFCstV/view?usp=sharing)
 
 Approximate size: 5.8 GB compressed.

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>UCAV_threadx_netx</name>
+	<comment>Created by Vitis v2020.2</comment>
+	<projects>
+		<project>zybo_platform</project>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.genmakebuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.ScannerConfigBuilder</name>
+			<triggers>full,incremental,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>com.xilinx.sdx.sdk.core.SdkProjectNature</nature>
+		<nature>org.eclipse.cdt.core.cnature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>nxd_src</name>
+			<type>2</type>
+			<location>C:/Users/mfurk/zybo_z720_project/githubdan_buldugum_repo/threadx-for-zynq--main/zedboard_extracted/zedboard_full_source/xilinx/nxd/src</location>
+		</link>
+		<link>
+			<name>qpc_inc</name>
+			<type>2</type>
+			<location>C:/Users/mfurk/zybo_z720_project/qpc-8.1.4/include</location>
+		</link>
+		<link>
+			<name>qpc_port</name>
+			<type>2</type>
+			<location>C:/Users/mfurk/zybo_z720_project/qpc-8.1.4/ports/threadx</location>
+		</link>
+		<link>
+			<name>qpc_src_qf</name>
+			<type>2</type>
+			<location>C:/Users/mfurk/zybo_z720_project/qpc-8.1.4/src/qf</location>
+		</link>
+		<link>
+			<name>tx_src</name>
+			<type>2</type>
+			<location>C:/Users/mfurk/zybo_z720_project/githubdan_buldugum_repo/threadx-for-zynq--main/zedboard_extracted/zedboard_full_source/xilinx/tx/src</location>
+		</link>
+	</linkedResources>
+</projectDescription>

@@ -1,0 +1,70 @@
+class_id tank:0 zpt:1 truck:2 civil:3
+
+
+
+
+total 10.000 data
+
+
+
+
+araçlar
+25 sivil
+25 tank
+25 zpt
+25 kamyon
+
+
+
+
+1000 boş
+2000 tekli
+4000 2-3lü
+2000 4-6lı
+1000 7-8li
+
+
+
+
+6400 Train Data
+
+
+
+
+800 Test Data
+
+
+
+
+800 Validation Data
+
+
+
+
+
+TEKLİ TARGETVIEW'ler
+SİVİL
+a3: 13
+q7: 17
+bmw: 20
+
+ZPT
+m113: 25
+btr80: 30
+
+KAMYON
+Ural4320: 27
+4320-v: 27
+
+TANK
+T90: 40
+Abrams: 50
+
+İKİLİ TARGETVIEW'ler
+47
+
+DÖRTLÜ TARGETVIEW'ler
+53
+
+DEMO
+65

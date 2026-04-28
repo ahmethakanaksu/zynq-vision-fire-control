@@ -1,0 +1,111 @@
+# =====================================================================
+# zynq-vision-fire-control -- ignore patterns
+# =====================================================================
+# Source and project configuration only. Anything that the build system
+# (Vitis, Unity, gcc, MSBuild) regenerates is not committed.
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Vitis 2020.2 / Eclipse build outputs and IDE caches
+# ---------------------------------------------------------------------
+Debug/
+Release/
+_ide/
+.metadata/
+RemoteSystemsTempFiles/
+
+# Vitis IDE telemetry / log files (per-user)
+IDE.log
+.analytics
+
+# Xilinx Vitis platform regenerated content
+**/export/
+**/ps7_cortexa9_0/
+**/zynq_fsbl_bsp/
+**/logs/
+**/.log/
+
+# C / C++ build artifacts (firmware)
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.map
+*.lst
+*.dep
+
+# ---------------------------------------------------------------------
+# Unity 6000.x generated content (never commit)
+# ---------------------------------------------------------------------
+Library/
+Temp/
+Obj/
+obj/
+Logs/
+UserSettings/
+MemoryCaptures/
+Build/
+Builds/
+ExportedObj/
+sysinfo.txt
+
+# Unity / IDE-side regenerated solution and project files
+*.csproj
+*.sln
+*.slnx
+*.unityproj
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.unitypackage
+
+# ---------------------------------------------------------------------
+# Large Unity assets shipped separately (see README for download link)
+# ---------------------------------------------------------------------
+object-detection-and-simulation/LargeTerrain/Assets/TerrainDemoScene_URP/
+object-detection-and-simulation/LargeTerrain/Assets/TerrainDemoScene_URP.meta
+object-detection-and-simulation/LargeTerrain/Assets/T90/
+object-detection-and-simulation/LargeTerrain/Assets/T90.meta
+object-detection-and-simulation/LargeTerrain/Assets/Models/
+object-detection-and-simulation/LargeTerrain/Assets/Models.meta
+object-detection-and-simulation/LargeTerrain/Assets/Vefects/
+object-detection-and-simulation/LargeTerrain/Assets/Vefects.meta
+
+# ---------------------------------------------------------------------
+# Editor / IDE caches
+# ---------------------------------------------------------------------
+.vscode/
+.idea/
+.vs/
+.vsconfig
+.cache/
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------------------
+# Python (host-side test harness, if any)
+# ---------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# ---------------------------------------------------------------------
+# OS junk
+# ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------
+# Misc
+# ---------------------------------------------------------------------
+*.log
+hs_err_pid*

@@ -12,24 +12,31 @@
 [![C / C++](https://img.shields.io/badge/Language-C%20%2F%20C%2B%2B-00599C?logo=cplusplus&logoColor=white)](https://en.wikipedia.org/wiki/C%2B%2B)
 
 <p align="center">
-  <img src="docs/images/logo_threadx.png" alt="Eclipse ThreadX" height="64">
+  <img src="docs/images/logo_threadx.jpg" alt="Eclipse ThreadX" height="64">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logo_qpc.png" alt="QP/C" height="64">
+  <img src="docs/images/logo_qpc.jpg" alt="QP/C" height="64">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logo_netxduo.png" alt="NetX Duo" height="64">
+  <img src="docs/images/logo_netxduo.jpg" alt="NetX Duo" height="64">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logo_unity.png" alt="Unity" height="64">
+  <img src="docs/images/logo_unity.jpg" alt="Unity" height="64">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logo_yolo.png" alt="YOLO" height="64">
+  <img src="docs/images/logo_yolo.jpg" alt="YOLO" height="64">
   &nbsp;&nbsp;&nbsp;
   <img src="docs/images/logo_zynq.jpg" alt="Xilinx Zynq-7000" height="64">
 </p>
 
 <p align="center">
-  <img src="docs/images/akinci_hero.png" alt="Akıncı UCAV in flight over the simulated terrain" width="720">
+  <img src="docs/images/akinci_hero.png" alt="Akıncı UCAV in flight" width="780">
+</p>
+<p align="center">
+  <img src="docs/images/akinci_hero2.png" alt="Akıncı UCAV banking over the corridor" width="780">
 </p>
 
-## Live demo
+---
+
+## ▶ Live demo
+
+The full kill chain — UCAV in flight, YOLO detector classifying ground vehicles, civilians tracked but spared, hostile vehicles verified by laser range-finder, the appropriate munition launched, impact effects rendered — captured live on the Unity simulator over a 100 Mbps Ethernet link to a real Zybo Z7-20 board.
 
 [![Watch the demo on YouTube](https://img.youtube.com/vi/hgIOaLgsaew/maxresdefault.jpg)](https://www.youtube.com/watch?v=hgIOaLgsaew)
 
@@ -37,7 +44,7 @@ GitHub does not embed video — the thumbnail above is clickable. Direct link: <
 
 ## Engineering report
 
-A full engineering report (architecture, design trade-offs, MOT and clustering math, defense-grade alignment, operational scenarios with real UART traces, verification matrix) is included in the repository:
+The full engineering report — architecture, design trade-offs, MOT and clustering math, defense-grade alignment, operational scenarios with real UART traces, verification matrix — is included:
 
 **→ [`docs/engineering_report.pdf`](docs/engineering_report.pdf)**
 
@@ -67,10 +74,101 @@ A full engineering report (architecture, design trade-offs, MOT and clustering m
 | **Toolchain** | **Xilinx Vitis 2020.2** + arm-none-eabi-gcc/g++ | Cross-compilation, BSP regeneration, JTAG debug |
 
 <p align="center">
-  <img src="docs/images/hardware_setup.jpg" alt="Live hardware setup — Zybo Z7-20 connected over Ethernet to the host PC" width="600">
+  <img src="docs/images/hardware_setup.jpg" alt="Live hardware setup — Zybo Z7-20 over Ethernet to the host PC" width="600">
 </p>
 
 <p align="center"><i>Live bench: Zybo Z7-20 over 100 Mbps Ethernet, USB-UART feeding PuTTY, Unity simulator on the host.</i></p>
+
+---
+
+## What the board actually does with each frame
+
+Each YOLO inference frame is a list of bounding boxes with class scores. The board's job is to turn that into a deliberate, persistent fire-control decision. Five image-driven steps, every one of them done on the Zynq side under the ThreadX + QP/C runtime:
+
+### 1 · YOLO detection (inside Unity, GPU)
+
+Custom-trained YOLO v3-tiny recognises four classes — **Tank, ZPT, Military Truck, Civilian** — at 416 × 416 with **mAP@0.5 = 0.995**. The detector runs every third render frame on the simulator's GPU, and per-detection results (class score, normalised centroid, box width / height) are NMS-filtered (IoU 0.45, score 0.25) and shipped to the board over UDP as one ASCII line:
+
+```
+FRM,<frame>,<count>,<cls>,<cx>,<cy>,<w>,<h>,...
+```
+
+<p align="center">
+  <img src="docs/images/yolo_recognition.jpg" alt="YOLO v3-tiny recognising Tank / ZPT / Truck / Civilian classes with confidence scores" width="780">
+</p>
+
+<p align="center"><i>YOLO v3-tiny on a held-out batch — clean class separation, near-1.0 confidences across Tank, ZPT, Military Truck, and Civilian.</i></p>
+
+### 2 · Persistent multi-object tracking (MOT)
+
+YOLO is stateless: the same tank in two consecutive frames produces two unrelated bounding boxes whose centroids wobble. The board's `track_table` enforces persistent identity using a sqrt-free, libm-free centroid match:
+
+```
+thr_sq = 0.36 · (w² + h²)            // (0.6 · diagonal)², libm-free
+thr_sq = clamp(thr_sq, 18², 60²)     // size-scaled, with sane bounds
+dsq    = (cx − tcx)² + (cy − tcy)²
+match  = (dsq ≤ thr_sq) AND (cls equal) AND (track not stale)
+```
+
+A matched detection updates the existing track in place; an unmatched detection opens a new slot with a fresh `track_id` (`class_idx · 100 + serial`). Tracks that miss too many frames decay out automatically. The result: **stable identity across frames, no LSR-spam, no munition waste**.
+
+### 3 · Cluster grouping (cluster mode)
+
+When several hostiles co-locate — a side-by-side convoy, a formation — issuing a separate LSR + FIRE for each is wasteful. Cluster mode groups nearby hostiles using a **DBSCAN-style connected-neighbourhood algorithm** (BFS from each unvisited candidate, link threshold size-scaled in squared-distance space) and engages each cluster with **one** laser request and **one** missile.
+
+<p align="center">
+  <img src="docs/images/cluster_scene.png" alt="A convoy of three Tanks, detected and clustered as one" width="640">
+</p>
+<p align="center">
+  <img src="docs/images/cluster_engaged.png" alt="The same cluster engaged with one cluster-aware missile" width="640">
+</p>
+
+<p align="center"><i>Three Tanks → one BFS cluster (members=3, score=15) → one CLSRCMD → verified → one CFIRE with MAM-L.</i></p>
+
+### 4 · Pixel → laser pitch / yaw (libm-free) and target verification
+
+Once `track_table` knows where on the screen a hostile is, the board has to translate a pixel coordinate into a camera-frame pitch / yaw pair so the simulator's laser-range-finder can verify the target. Every term of that conversion is computed without `libm` — `tan(half-FOV)` is a compile-time constant, and `atan` is a 5-term Taylor expansion:
+
+```
+atan(x) ≈ x − x³/3 + x⁵/5 − x⁷/7 + x⁹/9       for |x| ≤ 1
+atan(x) =  π/2 − atan(1/x)                    folds |x| > 1 back into range
+```
+
+Bounded error: **< 1.1 milli-degrees** across the full frame. The angles go straight onto the wire as integer milli-degrees, so float quantisation noise never crosses the link:
+
+```
+LSRCMD,<frame>,<count>,<track_3digit>,<pitch_mdeg>,<yaw_mdeg>,...
+```
+
+The simulator raycasts using those angles and returns one `LSRRES` per track. The board flips the track to `discovered` on a hit; only discovered hostiles are eligible for engagement.
+
+<p align="center">
+  <img src="docs/images/laser_from_drone.png" alt="Akıncı emitting the laser-range-finder beam toward a ground target" width="640">
+</p>
+<p align="center">
+  <img src="docs/images/laser_on_target.png" alt="Laser beam locked onto a verified hostile tank" width="640">
+</p>
+
+<p align="center"><i>The pitch / yaw computed by the board lands the laser on the verified hostile — left: Akıncı emitting the LSR beam; right: the same beam locked onto the target on the ground.</i></p>
+
+### 5 · Class-aware (and cluster-aware) fire decision
+
+Once a hostile is verified, `AO_Engagement` consults a preference table. Single-target munition policy:
+
+| Target Class | First Choice | Second Choice | Third Choice |
+| --- | --- | --- | --- |
+| **Tank** | MAM-L | SOM | Cirit |
+| **ZPT** | MAM-L | Cirit | SOM |
+| **Military Truck** | Cirit | MAM-L | SOM |
+| **Civilian** | — *(structurally never engaged; allocator returns -1)* | — | — |
+
+Cluster-mode policy escalates to MAM-L / SOM as the cluster's score and Tank presence grow. If no munition fits, the engagement is **silently skipped** (counter advances, kernel never asserts) — a textbook fail-soft.
+
+<p align="center">
+  <img src="docs/images/kill_chain_strike.png" alt="Two missiles diving on a hostile cluster after CFIRE" width="780">
+</p>
+
+<p align="center"><i>End of the kill chain: verified hostile cluster, CFIRE issued, missile prefabs in flight toward the formation.</i></p>
 
 ---
 
@@ -180,7 +278,7 @@ if (ao_mission_controller_mode() == 1) {
 | Frame ingest | `udp_router → AO_FrameProcessor` | same |
 | Per-frame tracking | `track_table` (begin / match_or_create / end) | same |
 | Candidate selection | `track_table_collect_lsr_candidates` per track | `cluster_table_build_pending` (DBSCAN BFS) |
-| Laser pipeline | `LSRCMD` per candidate, `LSRRES` per track | `CLSRCMD` per cluster (with all members), `CLSRRES` per cluster |
+| Laser pipeline | `LSRCMD` per candidate, `LSRRES` per track | `CLSRCMD` per cluster, `CLSRRES` per cluster |
 | Munition allocation | `allocate_for_class(VehicleClass)` — class-aware | `allocate_for_cluster(score, has_tank)` — score-aware |
 | Wire output | `FIRE,<frame>,<track>,<class>,<missile>` | `CFIRE,<frame>,<cluster_id>,<score>,<missile>` |
 
@@ -242,12 +340,6 @@ Track ids encode class via `class_idx * 100 + serial` (0..99 Tank, 100..199 ZPT,
   <img src="docs/images/uart_boot_trace.png" alt="PuTTY UART trace at boot and initial ARM" width="700">
 </p>
 
-In cluster mode the same flow becomes one `CLSRCMD` covering all members, then one `CFIRE` per verified cluster:
-
-<p align="center">
-  <img src="docs/images/cluster_engaged.png" alt="Cluster engagement — three Tanks engaged with one missile" width="600">
-</p>
-
 ---
 
 ## Defense-grade design decisions
@@ -262,6 +354,12 @@ In cluster mode the same flow becomes one `CLSRCMD` covering all members, then o
 | **Fail-soft graceful degradation** | Pool exhaustion / munition depletion / unlearned uplink → log + counter, never an assert |
 | **No libm** | Squared-distance MOT and cluster thresholds, 5-term Taylor `atan` for LSR (bounded < 1.1 mdeg error) |
 | **Deterministic wire protocol** | ASCII CSV, in-place tokenisation, no endianness, no alignment |
+
+<p align="center">
+  <img src="docs/images/civilian_spared.png" alt="Civilian car untouched while hostile vehicles burn nearby" width="700">
+</p>
+
+<p align="center"><i>Civilian-never-engaged in practice — defended by both the LSR candidate filter (<code>is_hostile_class</code>) and the engagement allocator (returns <code>-1</code> for the Civilian class). The civilian sedan is left untouched while the hostile APC and tank in the same scene are neutralised.</i></p>
 
 ---
 
@@ -305,3 +403,9 @@ The Unity project ships **without** the large 3D content — those would push th
 - **Live preemption observable** — `AO_Engagement` (priority 6) is observed to preempt `AO_LsrManager` (priority 5) in the same `CLSRRES` batch, confirming preemptive priority-based scheduling at runtime.
 
 For the full architecture, design rationale, and verification matrix, see [`docs/engineering_report.pdf`](docs/engineering_report.pdf).
+
+---
+
+<p align="center">
+  <img src="docs/images/akinci_close.png" alt="Akıncı UCAV — close-up beauty shot" width="700">
+</p>
